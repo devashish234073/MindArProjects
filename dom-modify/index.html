@@ -1,0 +1,108 @@
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-three.prod.js"></script>
+    <script type="module">
+        var rng = document.querySelector("input[type='range']");
+        const THREE = window.MINDAR.IMAGE.THREE;
+        const mindarThree = new window.MINDAR.IMAGE.MindARThree({
+            container: document.querySelector("#container"),
+            imageTargetSrc: "./targets.mind"
+        });
+        const { renderer, scene, camera } = mindarThree;
+        const anchor = mindarThree.addAnchor(0);
+        const geometry = new THREE.PlaneGeometry(1, 0.55);
+        const material = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.5 });
+        const plane = new THREE.Mesh(geometry, material);
+        anchor.group.add(plane);
+        var prevMatrix = anchor.group.matrix.elements;
+        const start = async () => {
+            await mindarThree.start();
+            renderer.setAnimationLoop(() => {
+                renderer.render(scene, camera);
+                var newMatrix = anchor.group.matrix.elements;
+                var diff = diffMatrix(prevMatrix,newMatrix);
+                rng.value = ((parseFloat(newMatrix[12] + 700)/1500.0)*1000).toFixed(0);
+                if(diff[diff.length-1]) {
+                    console.log(newMatrix);
+                    var pos = "";
+                    if(newMatrix[13]>1900) {
+                        pos = "top";
+                    } else if(newMatrix[13]<-1700) {
+                        pos = "bottom";
+                    }
+                    if(newMatrix[12]>800) {
+                        pos += "-right";
+                    } else if(newMatrix[12]<-700) {
+                        pos += "-left";
+                    }
+                    //document.querySelector("p").innerText = newMatrix[12]+" -> "+rng.value;//UNCOMMENT FOR DEBUGGING
+                } else {
+                    document.querySelector("p").innerText = "";
+                }
+                prevMatrix = newMatrix;
+            });
+        }
+        const startButton = document.querySelector("#startButton");
+        startButton.addEventListener("click", () => {
+            start();
+        });
+        stopButton.addEventListener("click", () => {
+            mindarThree.stop();
+            mindarThree.renderer.setAnimationLoop(null);
+        });
+        function diffMatrix(mat1,mat2) {
+            if(mat1.length!=mat2.length) {
+                return [-1];
+            }
+            var ret = [];
+            var toDisplay = false;
+            for(var i=0;i<mat1.length;i++) {
+                ret[i] = mat2[i]-mat1[i];
+                if(ret[i]!=0) {
+                    toDisplay = true;
+                }
+            }
+            ret[mat1.length] = toDisplay;
+            return ret;
+        }
+    </script>
+    <style>
+        body {
+            margin: 0;
+        }
+
+        #container {
+            width: 90%;
+            height: 90%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #control {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 2;
+        }
+        p{
+            font-size:30px;
+            color:blue;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="control">
+        <button id="startButton">Start</button>
+        <button id="stopButton">Stop</button>
+        <p></p>
+        <input type="range" min="0" max="1000">
+    </div>
+    <div id="container">
+    </div>
+</body>
+
+</html>
